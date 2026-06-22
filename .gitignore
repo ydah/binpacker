@@ -1,4 +1,5 @@
 /.bundle/
+/.rigor/
 /pkg/
 /tmp/
 *.gem
