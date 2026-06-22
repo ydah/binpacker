@@ -15,7 +15,6 @@ module Binpacker
 
     def run(tests)
       results = []
-      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
       tests.each do |test|
         elapsed = run_single(test)

@@ -65,7 +65,6 @@ module Binpacker
 
     def cmd_calibrate
       config = Config.new(profile: @profile)
-      discovery = TestRunner.for(config.test_runner)
       discovery_klass = config.test_runner == "rspec" ? RSpecDiscovery : MinitestDiscovery
       tests = discovery_klass.new(config).enumerate
 
