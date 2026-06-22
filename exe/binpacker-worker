@@ -5,6 +5,12 @@ require "json"
 require "optparse"
 require "tempfile"
 
+begin
+  require "minitest"
+rescue LoadError
+  # Minitest not installed — rspec-only use
+end
+
 def run_rspec(files, wid, rspec_args)
   outfile = Tempfile.new("binpacker-rspec-out")
   outfile.close
@@ -30,16 +36,56 @@ def run_rspec(files, wid, rspec_args)
 end
 
 def run_minitest(files, wid, _args)
+  def Minitest.autorun; end
+  Minitest.seed = 42
+
   results = []
-  exit_code = 0
+  failures = 0
+
   files.each do |file|
-    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    s = system("ruby", "-Ilib:test", file, exception: false)
-    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
-    results << { file: file, name: file, time: elapsed }
-    exit_code = s.exitstatus unless s.success?
+    path = File.expand_path(file)
+    klasses_before = Minitest::Runnable.runnables.dup
+    $stderr.puts "[worker-#{wid}] loading #{file}"
+    load path
+    new_klasses = Minitest::Runnable.runnables - klasses_before
+
+    next unless new_klasses.any?
+
+    reporter = TimingReporter.new
+    new_klasses.each do |klass|
+      klass.runnable_methods.each do |method_name|
+        Minitest::Runnable.run(klass, method_name, reporter)
+      end
+    end
+
+    reporter.results.each do |r|
+      results << {
+        file: file,
+        name: "#{r.klass}##{r.name}",
+        time: r.time
+      }
+      failures += 1 unless r.passed?
+    end
   end
-  [exit_code, results, results.size, exit_code == 0 ? results.size : 0]
+
+  exit_code = failures > 0 ? 1 : 0
+  passed = results.size - failures
+  [exit_code, results, results.size, passed]
+end
+
+if defined?(Minitest)
+  class TimingReporter < Minitest::AbstractReporter
+    attr_reader :results
+
+    def initialize
+      super()
+      @results = []
+    end
+
+    def record(result)
+      @results << result
+    end
+  end
 end
 
 options = { runner: "rspec", id: 0 }

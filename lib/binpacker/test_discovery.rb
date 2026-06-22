@@ -2,7 +2,6 @@
 
 module Binpacker
   Test = Struct.new(:file, :name, keyword_init: true) do
-    # Composite key used as timing lookup and identity.
     def key
       [file, name]
     end
@@ -15,7 +14,6 @@ module Binpacker
       @exclude = config.test_exclude
     end
 
-    # Returns Array<Test>. Concrete strategies subclass this.
     def enumerate
       raise NotImplementedError
     end
@@ -36,12 +34,27 @@ module Binpacker
   end
 
   class MinitestDiscovery < TestDiscovery
-    # For Minitest, we can't easily enumerate test names without running them.
-    # Instead, treat each file as a single test unit, with the file path as the name.
     def enumerate
-      glob_files.map { |f|
-        Test.new(file: f, name: f)
-      }
+      require "minitest"
+      def Minitest.autorun; end
+      Minitest.seed = 42
+
+      tests = []
+      glob_files.each do |file|
+        begin
+          klasses_before = Minitest::Runnable.runnables.dup
+          load File.expand_path(file)
+
+          (Minitest::Runnable.runnables - klasses_before).each do |klass|
+            klass.runnable_methods.each do |method_name|
+              tests << Test.new(file: file, name: "#{klass}##{method_name}")
+            end
+          end
+        rescue => e
+          $stderr.puts "minitest discovery: failed to load #{file}: #{e.message}"
+        end
+      end
+      tests
     end
   end
 end
