@@ -77,6 +77,7 @@ module Binpacker
 
     def build_profile(name)
       profiles = @raw.fetch("profiles", {})
+      return DEFAULTS.dup if profiles.empty? && name == "default"
       entry = profiles[name]
       raise ConfigError, "profile '#{name}' not found in binpacker.yml" unless entry
       parent = entry["extends"]

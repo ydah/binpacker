@@ -23,6 +23,8 @@ module Binpacker
         cmd_calibrate
       when "run"
         cmd_run
+      when "init"
+        cmd_init
       when "--version", "-v"
         puts "binpacker #{Binpacker::VERSION}"
       when "--help", "-h", nil
@@ -63,6 +65,41 @@ module Binpacker
       @command = remaining.shift
     end
 
+    def cmd_init
+      config_path = Pathname.pwd.join("binpacker.yml")
+      if config_path.exist?
+        puts "binpacker.yml already exists at #{config_path}"
+        exit 1
+      end
+
+      framework = detect_framework
+      pattern = framework == "minitest" ? "test/**/*_test.rb" : "spec/**/*_spec.rb"
+      runner = framework
+
+      yaml = <<~YAML
+        profiles:
+          default:
+            test_runner: #{runner}
+            workers: auto
+            timing_file: binpacker.timings
+            test_pattern: "#{pattern}"
+            scheduler:
+              algorithm: lpt
+              steal_enabled: true
+          ci:
+            extends: default
+            workers: 4
+      YAML
+
+      config_path.write(yaml)
+      puts "Created #{config_path}"
+      puts "Detected test framework: #{framework}"
+      puts ""
+      puts "Next steps:"
+      puts "  1. binpacker calibrate   (seed timing data)"
+      puts "  2. binpacker run          (run in parallel)"
+    end
+
     def cmd_calibrate
       config = Config.new(profile: @profile)
       discovery_klass = config.test_runner == "rspec" ? RSpecDiscovery : MinitestDiscovery
@@ -101,16 +138,24 @@ module Binpacker
         Commands:
           run          Execute tests across worker processes
           calibrate    Run tests serially to generate timing data
+          init         Create binpacker.yml with auto-detected settings
 
         Options:
           --profile NAME   Select profile from binpacker.yml
           --help           Show this message
 
         Examples:
+          binpacker init
           binpacker run --profile ci
           binpacker run -- --tag ~slow
           binpacker calibrate
       HELP
+    end
+
+    def detect_framework
+      return "minitest" if Dir.glob("test*/**/*_test.rb").any?
+      return "minitest" if Dir.glob("test*/**/test_*.rb").any?
+      "rspec"
     end
   end
 end
