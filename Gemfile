@@ -8,4 +8,5 @@ group :development do
   gem "rake"
   gem "rspec"
   gem "debug"
+  gem "minitest"
 end
