@@ -12,44 +12,62 @@ module Binpacker
       @path = Pathname(path)
     end
 
-    # Returns a Hash of (String(file), String(name)) -> Float(time).
-    # Last entry per (file, name) wins.
-    def load
+    def load_with_fallback(tests)
+      per_file = load_per_file
+      tests.each_with_object({}) do |test, hash|
+        key = normalize_path(test.file)
+        hash[test.key] = per_file.fetch(key) { filesize_weight(test.file) }
+      end
+    end
+
+    def load_raw
       return {} unless @path.exist?
 
       @path.each_line
         .map { |line| parse_line(line) }
         .compact
-        .group_by { |e| [e.file, e.name] }
+        .group_by { |e| [normalize_path(e.file), e.name] }
         .transform_values { |entries| entries.last.time }
     end
 
-    # Returns the weight for a given test, or DEFAULT_WEIGHT if unknown.
-    def weight_for(file:, name:)
-      entries = load
-      entries.fetch([file, name], DEFAULT_WEIGHT)
+    def load_per_file
+      return {} unless @path.exist?
+
+      @path.each_line
+        .map { |line| parse_line(line) }
+        .compact
+        .group_by { |e| normalize_path(e.file) }
+        .transform_values { |entries| entries.sum(&:time) }
     end
 
-    # Append a single timing entry.
+    def normalize_path(path)
+      Pathname(path).cleanpath.to_s.sub(/\A\.\//, "")
+    end
+
+    def weight_for(file:, name:)
+      measured = load_raw
+      measured.fetch([file, name]) { filesize_weight(file) }
+    end
+
     def append(file:, name:, time:)
       @path.dirname.mkpath unless @path.dirname.directory?
-      @path.open("a") do |io|
-        io.puts JSON.generate({ file: file, name: name, time: time })
-      end
+      @path.open("a") { |io| io.puts JSON.generate({ file: file, name: name, time: time }) }
     end
 
-    # Append multiple entries at once.
     def append_all(entries)
       return if entries.empty?
       @path.dirname.mkpath unless @path.dirname.directory?
       @path.open("a") do |io|
-        entries.each do |e|
-          io.puts JSON.generate({ file: e[:file], name: e[:name], time: e[:time] })
-        end
+        entries.each { |e| io.puts JSON.generate({ file: e[:file], name: e[:name], time: e[:time] }) }
       end
     end
 
     private
+
+    def filesize_weight(file)
+      path = Pathname(file)
+      path.exist? ? [path.size / 1024.0, DEFAULT_WEIGHT].max : DEFAULT_WEIGHT
+    end
 
     def parse_line(line)
       data = JSON.parse(line.strip)

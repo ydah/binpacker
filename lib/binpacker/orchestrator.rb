@@ -13,7 +13,7 @@ module Binpacker
 
       # 2. Load timing data
       timing = Timing.new(@config.timing_file)
-      timings = timing.load
+      timings = timing.load_with_fallback(tests)
 
       # 3. Schedule
       scheduler = Scheduler.for(@config.scheduler["algorithm"])
