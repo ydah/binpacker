@@ -86,3 +86,15 @@ _Avoid_: Plugin, driver
 **Passthrough arguments**:
 CLI arguments after `--` that binpacker forwards verbatim to the test runner. Example: `binpacker run -- --tag ~slow`. Kept out of `binpacker.yml` for simplicity.
 _Avoid_: Runner options, forwarded flags
+
+**Scheduling algorithm**:
+The heuristic that maps Tests to WorkerQueues. Implemented as a pluggable class behind the `Scheduler` interface. Built-in: `lpt`. Future: `multifit`.
+
+**LPT (Longest Processing Time)**:
+A greedy heuristic: sort Tests by descending Weight, then assign each to the least-loaded Worker at the moment of assignment. Simple, empirically near-optimal for identical-machines makespan.
+
+**MultiFit**:
+An LPT-based initial partition followed by a binary-search optimization pass over candidate makespan values. Produces better schedules at higher computation cost.
+
+**Scheduler interface**:
+`partition(tests:, worker_count:, timings:) -> Array<WorkerQueue>`. The only method a scheduling algorithm must implement.
