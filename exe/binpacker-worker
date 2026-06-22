@@ -17,7 +17,7 @@ def run_rspec(files, wid, rspec_args)
   ]
   success = system(*cmd)
 
-  data = (File.exist?(outfile.path) && File.size(outfile.path) > 0) ? JSON.parse(File.read(outfile.path)) : {}
+  data = (File.exist?(outfile.path) && File.size(outfile.path) > 0) ? JSON.parse(File.read(outfile.path, encoding: "UTF-8")) : {}
   examples = data["examples"] || []
   summary = data["summary"] || {}
 
