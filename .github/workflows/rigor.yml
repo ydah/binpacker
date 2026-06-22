@@ -1,0 +1,33 @@
+name: rigor
+
+on:
+  push:
+    branches: [master, "release/**"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' && !startsWith(github.ref, 'refs/heads/release/') }}
+
+permissions:
+  contents: read
+
+jobs:
+  rigor:
+    name: Rigor type check
+    runs-on: ubuntu-latest
+    env:
+      BUNDLE_GEMFILE: .github/rigor/Gemfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+
+      - name: Install community RBS
+        run: bundle exec rbs collection install
+
+      - name: Run rigor check
+        run: bundle exec rigor check --no-cache
