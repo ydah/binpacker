@@ -11,9 +11,11 @@ Gem::Specification.new do |spec|
   spec.license = "MPL-2.0"
 
   spec.required_ruby_version = ">= 3.2"
+  spec.homepage = "https://github.com/rigortype/binpacker"
+  spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["rubygems_mfa_required"] = "true"
 
-  spec.files = Dir["lib/**/*.rb", "exe/*", "LICENSE.txt"]
+  spec.files = Dir["lib/**/*.rb", "exe/*", "LICENSE"]
   spec.bindir = "exe"
   spec.executables = ["binpacker"]
 end
