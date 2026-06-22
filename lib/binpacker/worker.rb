@@ -20,9 +20,9 @@ module Binpacker
     def start
       worker_script = File.expand_path("../../exe/binpacker-worker", __dir__)
 
-      @stdin_r, @stdin_w = IO.pipe
-      @stdout_r, @stdout_w = IO.pipe
-      @stderr_r, @stderr_w = IO.pipe
+      @stdin_r, @stdin_w = IO.pipe(encoding: "UTF-8")
+      @stdout_r, @stdout_w = IO.pipe(encoding: "UTF-8")
+      @stderr_r, @stderr_w = IO.pipe(encoding: "UTF-8")
 
       @pid = Process.spawn(
         RbConfig.ruby, worker_script,

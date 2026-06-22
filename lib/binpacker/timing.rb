@@ -23,7 +23,7 @@ module Binpacker
     def load_raw
       return {} unless @path.exist?
 
-      @path.each_line
+      @path.each_line(encoding: "UTF-8")
         .map { |line| parse_line(line) }
         .compact
         .group_by { |e| [normalize_path(e.file), e.name] }
@@ -33,7 +33,7 @@ module Binpacker
     def load_per_file
       return {} unless @path.exist?
 
-      @path.each_line
+      @path.each_line(encoding: "UTF-8")
         .map { |line| parse_line(line) }
         .compact
         .group_by { |e| normalize_path(e.file) }
@@ -51,13 +51,13 @@ module Binpacker
 
     def append(file:, name:, time:)
       @path.dirname.mkpath unless @path.dirname.directory?
-      @path.open("a") { |io| io.puts JSON.generate({ file: file, name: name, time: time }) }
+      @path.open("a", encoding: "UTF-8") { |io| io.puts JSON.generate({ file: file, name: name, time: time }) }
     end
 
     def append_all(entries)
       return if entries.empty?
       @path.dirname.mkpath unless @path.dirname.directory?
-      @path.open("a") do |io|
+      @path.open("a", encoding: "UTF-8") do |io|
         entries.each { |e| io.puts JSON.generate({ file: e[:file], name: e[:name], time: e[:time] }) }
       end
     end
