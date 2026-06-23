@@ -57,3 +57,52 @@ RSpec.describe Binpacker::LptScheduler do
     end
   end
 end
+
+RSpec.describe Binpacker::MultifitScheduler do
+  let(:tests) do
+    [
+      Binpacker::Test.new(file: "heavy.rb", name: "heavy"),
+      Binpacker::Test.new(file: "light.rb", name: "light"),
+      Binpacker::Test.new(file: "medium.rb", name: "medium"),
+      Binpacker::Test.new(file: "tiny.rb", name: "tiny"),
+      Binpacker::Test.new(file: "extra.rb", name: "extra")
+    ]
+  end
+
+  let(:timings) do
+    {
+      ["heavy.rb", "heavy"] => 100.0,
+      ["medium.rb", "medium"] => 50.0,
+      ["light.rb", "light"] => 10.0,
+      ["tiny.rb", "tiny"] => 1.0,
+      ["extra.rb", "extra"] => 40.0
+    }
+  end
+
+  describe "#partition" do
+    it "returns correct number of workers" do
+      queues = subject.partition(tests: tests, worker_count: 3, timings: timings)
+      expect(queues.size).to eq(3)
+    end
+
+    it "produces equal or better makespan than LPT" do
+      lpt_queues = Binpacker::LptScheduler.new.partition(tests: tests, worker_count: 2, timings: timings)
+      lpt_makespan = lpt_queues.map { |q| q.total_weight(timings) }.max
+
+      mf_queues = subject.partition(tests: tests, worker_count: 2, timings: timings)
+      mf_makespan = mf_queues.map { |q| q.total_weight(timings) }.max
+
+      expect(mf_makespan).to be <= lpt_makespan
+    end
+
+    it "handles empty test list" do
+      queues = subject.partition(tests: [], worker_count: 3, timings: {})
+      expect(queues.map(&:empty?)).to all(be true)
+    end
+
+    it "handles single worker" do
+      queues = subject.partition(tests: tests, worker_count: 1, timings: timings)
+      expect(queues.first.size).to eq(5)
+    end
+  end
+end
